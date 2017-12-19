@@ -59,11 +59,14 @@ def get_stench_today(measurements_csv_file, stations_names_list):
     return askza_alarm_value_list
 
 
-def print_stenchs(stenchs_dict, stations_names_dict):
+def get_stenchs_str_list(stenchs_dict, stations_names_dict):
+    stenchs_str_list = []
     for date, stench in sorted(stenchs_dict.items()):
         station_name = list(stench.keys())[0]
         measurment = list(stench.values())[0]
-        print('{} - {} : {}'.format(date.strftime('%d.%m.%Y %H:%M'), stations_names_dict[station_name], measurment))
+        stenchs_str_list.append('{} - {} : {}'.format(date.strftime('%d.%m.%Y %H:%M'),
+                                                      stations_names_dict[station_name], measurment))
+    return stenchs_str_list
 
 
 def get_page(url):
@@ -83,4 +86,4 @@ if __name__ == '__main__':
     save_measurements_csv_file(session, 'egfdm1.csv')
     stations_names = get_stations_names_dict_from_csv('egfdm1.csv')
     stenchs = get_stench_today('egfdm1.csv', list(stations_names.keys()))
-    print_stenchs(stenchs, stations_names)
+    print(('\n').join(get_stenchs_str_list(stenchs, stations_names)))
