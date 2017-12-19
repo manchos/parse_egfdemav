@@ -7,6 +7,7 @@ import access
 
 def greet_user(bot, update):
     print('Вызван /start')
+    print(update.message.chat_id)
     bot.sendMessage(update.message.chat_id, text='Давай общаться!')
 
 def words_count(bot, update):
