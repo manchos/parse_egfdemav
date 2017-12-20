@@ -52,7 +52,7 @@ def get_stench_today(measurements_csv_file, stations_names_list):
                 date = row['date']
                 stench_datetime = datetime.strptime(date, "%d/%m/%Y %H:%M")
                 del row['date']
-                stench = {key: value for key, value in row.items() if value not in ('', None) and float(value) > 0.008}
+                stench = {key: round(float(value)/0.008, 2) for key, value in row.items() if value not in ('', None) and float(value) > 0.008}
                 if stench:
                     askza_alarm_value_list[stench_datetime] = stench
                 askza_value_list[date] = row
@@ -60,12 +60,16 @@ def get_stench_today(measurements_csv_file, stations_names_list):
 
 
 def get_stenchs_str_list(stenchs_dict, stations_names_dict):
-    stenchs_str_list = []
-    for date, stench in sorted(stenchs_dict.items()):
+    today = datetime.today()
+    stenchs_str_list = ['']
+    stenchs_str_list.append(today.strftime('%d.%m.%Y'))
+    for num, (date, stench) in enumerate(sorted(stenchs_dict.items()), start=1):
         station_name = list(stench.keys())[0]
         measurment = list(stench.values())[0]
-        stenchs_str_list.append('{} - {} : {}'.format(date.strftime('%d.%m.%Y %H:%M'),
-                                                      stations_names_dict[station_name], measurment))
+        # ('%d.%m.%Y %H:%M')
+        stenchs_str_list.append('{} - {}: {}'.format(date.strftime('%H:%M'),
+                                                      stations_names_dict[station_name].strip(), measurment))
+    stenchs_str_list.append('\nВсего за {} - {} превышений'.format(today.strftime('%d.%m.%Y'), num))
     return stenchs_str_list
 
 

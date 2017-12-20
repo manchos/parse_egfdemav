@@ -66,11 +66,12 @@ def callback_alarm(bot, job):
     bot.send_message(chat_id=job.context, text=('\n').join(pollutions.get_stenchs_str_list(stenchs, stations_names)))
 
 
+
 def callback_timer(bot, update, job_queue):
     print('callback_timer')
     bot.send_message(chat_id=update.message.chat_id, text='Setting a timer for 1 minute!')
-    job_queue.run_repeating(callback_alarm, 60, context=update.message.chat_id)
-
+    # job_queue.run_repeating(callback_alarm, 1, context=update.message.chat_id)
+    job_queue.run_once(callback_alarm, 1, context=update.message.chat_id)
 #
 
 def callback_30(bot, job):
@@ -85,20 +86,13 @@ def main():
 
 
     dp = updater.dispatcher
-    dp.add_handler(CommandHandler('stench', callback_timer, pass_job_queue=True))
+    dp.add_handler(CommandHandler('h2s', callback_timer, pass_job_queue=True))
     dp.add_handler(CommandHandler("start", greet_user))
-    dp.add_handler(CommandHandler("wordcount", words_count))
-
     dp.add_handler(CommandHandler("wordcount", words_count))
 
     # dp.add_handler(MessageHandler([Filters.text], talk_to_me))
 
     dp.add_error_handler(show_error)
-
-
-
-
-
 
     updater.start_polling()
     updater.idle()
