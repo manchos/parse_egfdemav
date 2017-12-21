@@ -61,9 +61,9 @@ def callback_alarm(bot, job):
     session = pollutions.get_egfdm_authorization_session(access.url, access.data)
     pollutions.save_measurements_csv_file(session, 'egfdm1.csv')
     stations_names = pollutions.get_stations_names_dict_from_csv('egfdm1.csv')
-    stenchs = pollutions.get_stench_today('egfdm1.csv', list(stations_names.keys()))
+    stenchs_num, stenchs = pollutions.get_stench_today('egfdm1.csv', list(stations_names.keys()))
 
-    bot.send_message(chat_id=job.context, text=('\n').join(pollutions.get_stenchs_str_list(stenchs, stations_names)))
+    bot.send_message(chat_id=job.context, text=('\n').join(pollutions.get_stenchs_str_list(stenchs, stenchs_num, stations_names)))
 
 
 

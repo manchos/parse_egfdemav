@@ -9,6 +9,16 @@ class BaseModel(Model):
         database = db
 
 
+#округ Москвы
+class MoscowDistrict(BaseModel):
+    long_name = CharField()
+    short_name = CharField()
+    population = IntegerField(null=True)
+    area = IntegerField(null=True)
+    polygon = TextField(null=True)
+
+
+
 #граждане
 class Citizen(BaseModel):
     name = CharField()
@@ -31,6 +41,7 @@ class CitizenRequest(BaseModel):
     documents_url = CharField()
     request_type = CharField()
     condition = CharField()
+    district = CharField()
 
     class Meta:
         order_by = ('-timestamp',)
@@ -44,6 +55,7 @@ class Station(BaseModel):
     address = TextField(default='')
     latitude = FloatField(default=0.0)
     longitude = FloatField(default=0.0)
+    district = CharField()
 
     class Meta:
         order_by = ('-id_egfdm',)
@@ -54,6 +66,7 @@ class Departure(BaseModel):
     timestamp = DateTimeField()
     url_act = CharField()
     citizenrequest = ForeignKeyField(Citizen, related_name='departures')
+
 
 
 #вонь
@@ -78,7 +91,7 @@ class Stench(BaseModel):
 if __name__ == '__main__':
 
     db.connect()
-    # db.create_tables([Stench, Station, Citizen, CitizenRequest, Departure], safe=True)
+    # db.create_tables([MoscowDistrict, Stench, Station, Citizen, CitizenRequest, Departure], safe=True)
     # station1 = Station(id_egfdm=18, ru_name='dddd', address='ddddd', en_name='Kozukhova')
     # # station1.save()
     # stench1 = Stench.create(value='1.45', chemical='h2s', timestamp=datetime.today(),

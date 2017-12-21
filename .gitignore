@@ -1,5 +1,9 @@
-*cache*
-__pycache__
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*cpython*
+*.py[cod]
+*$py.class
+logs/
 *access*
 *.csv
 *.pyc
