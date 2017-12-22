@@ -1,13 +1,14 @@
 from bs4 import BeautifulSoup
 import requests
 import access
+import re
 import logging
 import time
 
 from collections import OrderedDict
 from pollutions import get_egfdm_authorization_session, en_station_translit
 from transliterate import translit
-from dbstenchs import Station
+from dbstenchs import Station, db
 import re
 # import geopy
 from geopy.geocoders import Yandex
@@ -42,7 +43,6 @@ def get_stations_ids_dict(session, stations_url):
                          if st.get('v') != ''}
 
 
-
 def get_moscow_district(longitude, latitude, session=None):
     district_url = 'https://geocode-maps.yandex.ru/1.x/?geocode={},{}&kind=district&results=5&format=json'\
         .format(longitude, latitude)
@@ -50,29 +50,45 @@ def get_moscow_district(longitude, latitude, session=None):
     return response.json()['response']['GeoObjectCollection']['featureMember'][1]['GeoObject']['name']
 
 
+def get_district_short_name(district_full_name): #'юго-восточный административный округ'
+    district = district_full_name.strip()
+    if '-' in district_full_name:
+        re_ = re.findall('^([а-яА-Я]+)[ ]?[-]{1}[ ]?([а-яА-Я]+)', district)[0]
+    else:
+        re_ = re.findall('^([а-яА-Я]+)[ ]+', district)
+    return ''.join([a[:1].upper() for a in re_]) + 'АО' #ЮВАО
 
-if __name__ == '__main__':
 
-
-
-
-    session = get_egfdm_authorization_session(access.url, access.data)
+def stations_greate(session):
     stations_ids_dict = get_stations_ids_dict(session, access.stations_url)
-    stations = []
-    geolocator = Yandex()
     if stations_ids_dict is not None:
         for ru_name, id in stations_ids_dict.items():
-            print('{}: {}'.format(ru_name, id))
-            print(en_station_translit(ru_name))
-            # time.sleep(5)
-        location = geolocator.geocode("Маршала Полубоярова ул., 8")
+            # print('{}: {}'.format(ru_name.strip(), id))
+            # print(en_station_translit(ru_name))
+            Station.create(id_egfdm=id, ru_name=ru_name.strip(), en_name=en_station_translit(ru_name.strip()))
 
+
+
+if __name__ == '__main__':
+    # a = 'южный  административный округ'
+    # print(get_district_short_name(a))
+    db.connect()
+    session = get_egfdm_authorization_session(access.url, access.data)
+
+    stations_greate(session)
+
+
+
+            # time.sleep(5)
+
+    # geolocator = Yandex()
+    # location = geolocator.geocode("Маршала Полубоярова ул., 8")
+    # print(location.raw['metaDataProperty']['GeocoderMetaData']['text'])
+    # print(get_moscow_district(location.longitude, location.latitude))
 
 # print(location.address)
 # print((location.latitude, location.longitude))
-        print(location.raw['metaDataProperty']['GeocoderMetaData']['text'])
 
-        print(get_moscow_district(location.longitude, location.latitude))
 
             # stations.append({'id_egfdm': id,
             #                  'ru_name': ru_name,

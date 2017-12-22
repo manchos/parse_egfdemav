@@ -53,9 +53,10 @@ class Station(BaseModel):
     ru_name = CharField()
     en_name = CharField()
     address = TextField(default='')
+    short_address = TextField(default='')
     latitude = FloatField(default=0.0)
     longitude = FloatField(default=0.0)
-    district = CharField()
+    district = CharField(default='')
 
     class Meta:
         order_by = ('-id_egfdm',)
@@ -91,23 +92,32 @@ class Stench(BaseModel):
 if __name__ == '__main__':
 
     db.connect()
-    # db.create_tables([MoscowDistrict, Stench, Station, Citizen, CitizenRequest, Departure], safe=True)
-    # station1 = Station(id_egfdm=18, ru_name='dddd', address='ddddd', en_name='Kozukhova')
+
+    # db.create_tables([MoscowDistrict, MoscowDistrict, Stench, Station, Citizen, CitizenRequest, Departure], safe=True)
+
+    # station1 = Station.create(id_egfdm=18, ru_name='dddd', address='ddddd', en_name='Kozukhova')
+
     # # station1.save()
-    # stench1 = Stench.create(value='1.45', chemical='h2s', timestamp=datetime.today(),
-    #                         station=station1)
+    # stench1 = Stench.create(value='1.45', chemical='h2s', timestamp=datetime.today(), station=Station.get(id_egfdm=18))
 
-
-
+    stenches = Stench.get(is_submit_telegram=False)
+    print(stenches.value, stenches.is_submit_telegram)
+    # for stench in stenches:
+    #     print(stench)
+    # stenches.is_submit_telegram = True
+    # print(stench1.is_submit_telegram)
 
 
     # stench1.is_submit_telegram = True
 
-    stenches = Stench.get(Stench.station == 18)
-    print(stenches.station_id)
-    print(stenches.is_submit_telegram)
+    station = Station.get(id_egfdm=18)
+    # stenches1 = stenches
+    # station1 = stenches1
+    # for st in station:
+    #     print(st)
+    print(station.id_egfdm, station.ru_name)
 
-    # stenches.is_submit_telegram = True
+
 
 
 
