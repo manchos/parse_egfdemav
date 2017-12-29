@@ -4,11 +4,11 @@ import access
 import re
 import logging
 import time
-
+import peewee
 from collections import OrderedDict
 from pollutions import get_egfdm_authorization_session, get_stations_names_dict_from_csv, get_page
 from transliterate import translit
-from dbstenchs import Station, db
+from mafudb import Station, db, en_station_translit
 import re
 # import geopy
 from geopy.geocoders import Yandex
@@ -21,11 +21,9 @@ def utf8_encode(txt, encoding):
 
 
 
-
-
-
 def get_stations_ids_dict(session, stations_url):
     stations_page = get_page(stations_url, session)
+    print('get_stations_ids_dict {} from cache: {}'.format(stations_url, stations_page.from_cache))
     if stations_page is not None:
         soup = BeautifulSoup(stations_page.text, 'xml')
         stations_xmllist = soup.find(id='select___ASKZAStationStationID')
@@ -35,6 +33,7 @@ def get_stations_ids_dict(session, stations_url):
 
 def get_chemicals_ids_dict(session, stations_url):
     stations_page = get_page(stations_url, session)
+    print(' get_chemicals_ids_dict {} from cache: {}'.format(stations_url, stations_page.from_cache))
     if stations_page is not None:
         soup = BeautifulSoup(stations_page.text, 'xml')
         stations_xmllist = soup.find(id='select___ASKZAParameterParameterID')
@@ -58,14 +57,39 @@ def get_district_short_name(district_full_name): #'юго-восточный а�
     return ''.join([a[:1].upper() for a in re_]) + 'АО' #ЮВАО
 
 
-def stations_greate(session):
-    stations_ids_dict = get_stations_ids_dict(session, access.stations_url)
+def chemicals_greate(stations_ids_dict):
     if stations_ids_dict is not None:
         for ru_name, id in stations_ids_dict.items():
             # print('{}: {}'.format(ru_name.strip(), id))
             # print(en_station_translit(ru_name))
-            Station.create(id_egfdm=id, ru_name=ru_name.strip(), en_name=en_station_translit(ru_name.strip()))
+            try:
+                Station.create(mem_id=id, ru_name=ru_name.strip(), en_name=en_station_translit(ru_name.strip()))
+            except peewee.IntegrityError as ex:
+                logging.info('ex')
+                continue
 
+
+def stations_greate(stations_ids_dict):
+    if stations_ids_dict is not None:
+        for ru_name, id in stations_ids_dict.items():
+            # print('{}: {}'.format(ru_name.strip(), id))
+            # print(en_station_translit(ru_name))
+            try:
+                Station.create(mem_id=id, ru_name=ru_name.strip(), en_name=en_station_translit(ru_name.strip()))
+            except peewee.IntegrityError as ex:
+                logging.info('ex')
+                continue
+
+
+
+
+
+# <button type="button" name="_fullscreen" class="pushButton" title="Показывать меньше строк" onclick="async_subst_get('/wnd/this/_setmediumpage/10,_layer=t1,_this=1374','divt1');"><img alt="Показывать меньше строк" src="/images/icons/vf/table_roll.png" width="16px" height="16px"></button>
+
+
+def get_measurments_csv_url(soup):
+    measurments_csv_url = soup.find(attrs={"name": "_fullscreen", "class": "pushButton"})['onclick']
+    return measurments_csv_url
 
 
 if __name__ == '__main__':
@@ -75,12 +99,15 @@ if __name__ == '__main__':
 
     db.connect()
     session = get_egfdm_authorization_session(access.url, access.data)
+    stations_ids_dict = get_stations_ids_dict(session, access.stations_url)
 
-    # stations_greate(session)
+    stations_greate(stations_ids_dict)
 
     chemicals_ids_dict = get_chemicals_ids_dict(session, access.stations_url)
 
     print(get_chemicals_ids_dict(session, access.stations_url)['h2s'])
+
+
 
             # time.sleep(5)
 
