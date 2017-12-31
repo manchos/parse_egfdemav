@@ -79,11 +79,11 @@ class Departure(BaseModel):
 class Chemical(BaseModel):
     mem_id = IntegerField(primary_key=True, unique=True)
     mem_name = CharField()
-    full_name = CharField()
-    formula = CharField()
-    description = TextField()
-    mem_pdk = FloatField()
-    pdk = FloatField
+    full_name = CharField(default='')
+    formula = CharField(default='')
+    description = TextField(default='')
+    mem_pdk = FloatField(null=True)
+    pdk = FloatField(null=True)
 
 
 #вонь
@@ -114,6 +114,9 @@ def en_station_translit(ru_name):
     return clear_en_name
 
 
+
+
+
 def insert_station(id_egfdm, ru_name):
     # peewee.IntegrityError
     try:
@@ -132,14 +135,14 @@ def insert_stench(value, chemical, datetime, station=None, citizen_request=None)
                      format(chemical=chemical, value=value, station=station.ru_name, datetime=datetime))
 
 
-
 if __name__ == '__main__':
 
     db.connect()
 
-    db.create_tables([MoscowDistrict, Chemical, MoscowDistrict, Stench, Station,
-                      Citizen, CitizenRequest, Departure], safe=True)
+    # db.create_tables([MoscowDistrict, Chemical, MoscowDistrict, Stench, Station,
+    #                   Citizen, CitizenRequest, Departure], safe=True)
 
+    db.create_tables([Chemical], safe=True)
     # db.create_tables([Stench], safe=True)
 
     # station1 = Station.create(id_egfdm=18, ru_name='dddd', address='ddddd', en_name='Kozukhova')

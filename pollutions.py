@@ -11,6 +11,7 @@ import os
 from bs4 import BeautifulSoup
 
 
+
 from datetime import datetime
 import re
 
@@ -173,31 +174,42 @@ if __name__ == '__main__':
 
     session = get_egfdm_authorization_session(access.url, access.data)
 
-    chemicals_dict = stations.get_chemicals_ids_dict(session, access.stations_url)
-    stations_dict = stations.get_stations_ids_dict(session, access.stations_url)
-    stations.stations_greate(stations_dict)
+
+
+
+    stations_page = stations.get_stations_page(session, access.stations_url)
+
+    stations_dict = stations.get_stations_dict_from_html(stations_page)
     print(stations_dict)
+    # stations.stations_greate(stations_dict)
+    chemicals_dict = stations.get_chemicals_dict_from_html(stations_page)
+    # stations.db_chemicals_greate(chemicals_dict)
+    print(chemicals_dict)
+
 
 
     date_from = get_validate_date_from('29/12/2017')
     date_to = get_validate_date_to('29/12/2017')
-    chemical = 'co'
+    chemical = 'h2s'
+    chemical_id = stations.get_chemical_id_from_db(chemical)
+    if chemical_id:
+        print(chemical_id.mem_id)
 
     print(date_from, date_to, chemical in chemicals_dict)
 
 
-    #
-    if date_from and date_to and chemical in chemicals_dict:
-        measurements_url = get_measurements_url(chemicals_dict[chemical], date_from, date_to)
-        print(measurements_url)
-        save_file('egfdm1.csv', get_measurements_csv_file(session, measurements_url))
-        stations_names = get_stations_names_dict_from_csv('egfdm1.csv')
-        # print(stations_names)
-        # print(list(stations_names.keys()))
-        stenches_numb, stenchs = get_stenches_dict_from_file('egfdm1.csv', list(stations_names.keys()))
-        print(('\n').join(get_stenchs_str_list(stenchs, stenches_numb, stations_names, date_from, date_to)))
-    else:
-        logging.error("Неправильные значения дат")
+    # #
+    # if date_from and date_to and chemical in chemicals_dict:
+    #     measurements_url = get_measurements_url(chemicals_dict[chemical], date_from, date_to)
+    #     print(measurements_url)
+    #     save_file('egfdm1.csv', get_measurements_csv_file(session, measurements_url))
+    #     stations_names = get_stations_names_dict_from_csv('egfdm1.csv')
+    #     # print(stations_names)
+    #     # print(list(stations_names.keys()))
+    #     stenches_numb, stenchs = get_stenches_dict_from_file('egfdm1.csv', list(stations_names.keys()))
+    #     print(('\n').join(get_stenchs_str_list(stenchs, stenches_numb, stations_names, date_from, date_to)))
+    # else:
+    #     logging.error("Неправильные значения дат")
 
 
     # (chemical_id = 4, from_date = datetime.today(), from_hour = '0', from_min = '0',

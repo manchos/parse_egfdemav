@@ -8,7 +8,8 @@ import peewee
 from collections import OrderedDict
 from pollutions import get_egfdm_authorization_session, get_stations_names_dict_from_csv, get_page
 from transliterate import translit
-from mafudb import Station, db, en_station_translit
+# import mafudb
+from mafudb import Station, Chemical, db, en_station_translit, DatabaseError
 import re
 # import geopy
 from geopy.geocoders import Yandex
@@ -21,24 +22,24 @@ def utf8_encode(txt, encoding):
 
 
 
-def get_stations_ids_dict(session, stations_url):
-    stations_page = get_page(stations_url, session)
-    print('get_stations_ids_dict {} from cache: {}'.format(stations_url, stations_page.from_cache))
-    if stations_page is not None:
-        soup = BeautifulSoup(stations_page.text, 'xml')
+def get_stations_dict_from_html(html):
+    if html is not None:
+        soup = BeautifulSoup(html.text, 'xml')
         stations_xmllist = soup.find(id='select___ASKZAStationStationID')
         return {st.get_text(): st.get('v')  for st in stations_xmllist.find_all('aui:o-s', string=True)
                          if st.get('v') != ''}
 
 
-def get_chemicals_ids_dict(session, stations_url):
-    stations_page = get_page(stations_url, session)
-    print(' get_chemicals_ids_dict {} from cache: {}'.format(stations_url, stations_page.from_cache))
-    if stations_page is not None:
-        soup = BeautifulSoup(stations_page.text, 'xml')
+def get_chemicals_dict_from_html(html):
+    if html is not None:
+        soup = BeautifulSoup(html.text, 'xml')
         stations_xmllist = soup.find(id='select___ASKZAParameterParameterID')
         return {st.get_text().lower(): st.get('v')  for st in stations_xmllist.find_all('aui:o-s', string=True)
                          if st.get('v') != ''}
+
+
+def get_stations_page(session, stations_url):
+    return get_page(stations_url, session)
 
 
 def get_moscow_district(longitude, latitude, session=None):
@@ -57,7 +58,7 @@ def get_district_short_name(district_full_name): #'юго-восточный а�
     return ''.join([a[:1].upper() for a in re_]) + 'АО' #ЮВАО
 
 
-def chemicals_greate(stations_ids_dict):
+def db_stations_greate(stations_ids_dict):
     if stations_ids_dict is not None:
         for ru_name, id in stations_ids_dict.items():
             # print('{}: {}'.format(ru_name.strip(), id))
@@ -65,19 +66,37 @@ def chemicals_greate(stations_ids_dict):
             try:
                 Station.create(mem_id=id, ru_name=ru_name.strip(), en_name=en_station_translit(ru_name.strip()))
             except peewee.IntegrityError as ex:
-                logging.info('ex')
+                logging.info(ex)
                 continue
 
 
-def stations_greate(stations_ids_dict):
-    if stations_ids_dict is not None:
-        for ru_name, id in stations_ids_dict.items():
+def get_chemical_id_from_db(chemical_name):
+    try:
+        chemical = Chemical.get(Chemical.mem_name == chemical_name.strip())
+    except Chemical.DoesNotExist as exc:
+        logging.info(exc)
+        return None
+    return chemical
+
+# #вещества
+# class Chemical(BaseModel):
+#     mem_id = IntegerField(primary_key=True, unique=True)
+#     mem_name = CharField()
+#     full_name = CharField()
+#     formula = CharField()
+#     description = TextField()
+#     mem_pdk = FloatField()
+#     pdk = FloatField
+
+def db_chemicals_greate(chemicals_ids_dict):
+    if chemicals_ids_dict is not None:
+        for name, id in chemicals_ids_dict.items():
             # print('{}: {}'.format(ru_name.strip(), id))
             # print(en_station_translit(ru_name))
             try:
-                Station.create(mem_id=id, ru_name=ru_name.strip(), en_name=en_station_translit(ru_name.strip()))
+                Chemical.create(mem_id=id, mem_name=name.strip())
             except peewee.IntegrityError as ex:
-                logging.info('ex')
+                logging.info(ex)
                 continue
 
 
@@ -99,15 +118,21 @@ if __name__ == '__main__':
 
     db.connect()
     session = get_egfdm_authorization_session(access.url, access.data)
-    stations_ids_dict = get_stations_ids_dict(session, access.stations_url)
+    stations_page = get_stations_page(session, access.stations_url)
 
-    stations_greate(stations_ids_dict)
-
-    chemicals_ids_dict = get_chemicals_ids_dict(session, access.stations_url)
-
-    print(get_chemicals_ids_dict(session, access.stations_url)['h2s'])
+    stations_ids_dict = get_stations_ids_dict(stations_page)
 
 
+
+    chemicals_ids_dict = get_chemicals_ids_dict(stations_page)
+
+
+
+    print(chemicals_ids_dict['h2s'])
+
+    # db_stations_greate(stations_ids_dict)
+
+    # db_chemicals_greate(chemicals_ids_dict)
 
             # time.sleep(5)
 
