@@ -114,9 +114,6 @@ def en_station_translit(ru_name):
     return clear_en_name
 
 
-
-
-
 def insert_station(id_egfdm, ru_name):
     # peewee.IntegrityError
     try:
@@ -125,24 +122,28 @@ def insert_station(id_egfdm, ru_name):
         logging.info('The Station with id: {} already exists'.format(id_egfdm))
 
 
-def insert_stench(value, chemical, datetime, station=None, citizen_request=None):
-    # peewee.IntegrityError
-    try:
-        Stench.create(value=value, chemical=chemical, timestamp=datetime, station=station, citizen_request=citizen_request)
-    except IntegrityError:
-        print('sdfds')
-        logging.info('The stench of {chemical} with value: {value} from Station: {station} in {datetime} already exists'.
-                     format(chemical=chemical, value=value, station=station.ru_name, datetime=datetime))
+def get_stations_dict(db_table):
+    stations_from_db = db_table.select()
+    return {station.ru_name: station.mem_id for station in stations_from_db}
+
+
+
 
 
 if __name__ == '__main__':
 
     db.connect()
 
+    stations_dict = get_stations_dict(db_table=Station)
+    print(stations_dict)
+
+
+
+
     # db.create_tables([MoscowDistrict, Chemical, MoscowDistrict, Stench, Station,
     #                   Citizen, CitizenRequest, Departure], safe=True)
 
-    db.create_tables([Chemical], safe=True)
+    # db.create_tables([Chemical], safe=True)
     # db.create_tables([Stench], safe=True)
 
     # station1 = Station.create(id_egfdm=18, ru_name='dddd', address='ddddd', en_name='Kozukhova')

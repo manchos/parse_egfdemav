@@ -1,24 +1,36 @@
 from bs4 import BeautifulSoup
-import requests
 import access
-import re
+from service import get_page
 import logging
 import time
 import peewee
 from collections import OrderedDict
-from pollutions import get_egfdm_authorization_session, get_stations_names_dict_from_csv, get_page
+# from pollutions import get_egfdm_authorization_session, get_stations_names_dict_from_csv, get_page
 from transliterate import translit
 # import mafudb
 from mafudb import Station, Chemical, db, en_station_translit, DatabaseError
 import re
+import os
+import csv
 # import geopy
 from geopy.geocoders import Yandex
 import html5lib
 logging.basicConfig(level=logging.INFO)
 
 
-def utf8_encode(txt, encoding):
-    return bytes(txt, encoding).decode('utf-8')
+def get_stations_names_dict_from_csv(measurements_csv_file):
+    if not os.path.exists(measurements_csv_file):
+        return None
+    with open(measurements_csv_file, 'r', encoding='utf-8') as f:
+        reader_fields = csv.reader(f)
+        for num, row in enumerate(reader_fields):
+            if num == 0:
+                fields_ru_list = row[0].split('\t')[1:]
+                fields = [translit(mark, reversed=True) for mark in fields_ru_list]
+                clear_fields = [re.sub("[\'\-\(\).]", '', st).strip().replace(' ', '_') for st in fields]
+            else:
+                break
+        return OrderedDict(zip(clear_fields, fields_ru_list))
 
 
 
@@ -98,8 +110,6 @@ def db_chemicals_greate(chemicals_ids_dict):
             except peewee.IntegrityError as ex:
                 logging.info(ex)
                 continue
-
-
 
 
 

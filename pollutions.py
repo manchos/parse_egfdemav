@@ -9,20 +9,61 @@ from transliterate import translit, get_available_language_codes
 import stations
 import os
 from bs4 import BeautifulSoup
-
+from  stenches_work import get_stenches_dict_from_file
+from service import get_page, save_file
+from robobrowser import RoboBrowser
+from urllib.parse import urlencode
 
 
 from datetime import datetime
 import re
 
 
-def get_egfdm_authorization_session(url, data):
+def get_egfdm_authorization_session(url, data, requests_cache):
+    headers = {'User-agent': 'Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:57.0) Gecko/20100101 Firefox/57.0', 'Accept-Language': 'ru-RU,ru;q=0.8,en-US;q=0.5,en;q=0.3', 'Accept-Encoding': 'gzip, deflate, br'}
     session = requests_cache.CachedSession()
-    response = session.post(access.url, data=access.data, verify=False)
+    session.verify = False
+    session.headers = headers
+    response = session.post(url, data=data, headers=headers, verify=False)
+
+
+    print(response.text)
     print(response.from_cache)
+
     if response.status_code == 200:
         print(response)
     return session
+
+
+def get_egfdm_authorization_rb_session(url, data, requests_cache):
+    headers = {'User-agent': 'Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:57.0) Gecko/20100101 Firefox/57.0', 'Accept-Language': 'ru-RU,ru;q=0.8,en-US;q=0.5,en;q=0.3', 'Accept-Encoding': 'gzip, deflate, br'}
+    session = requests_cache.CachedSession()
+    browser = RoboBrowser()
+    browser.session.headers = headers
+    browser.session.verify = False
+    # encoded_args = urlencode(data)
+    browser.open(url)
+    form = browser.get_form(action='/act/_login')
+    form['logname'].value = data['logname']
+    form['password'].value = data['password']
+    form['entry_point'].value = data['entry_point']
+    form['ctlid2752307'].value = data['ctlid2752307']
+    form['login_url'].value = data['login_url']
+    # form['lang']
+    # url = '{url}/act/_login?login_url={login_url}&entry_point{entry_point}&'.format(url=url, **access.data )
+    browser.submit_form(form)
+
+
+
+    # response = session.post(url, data=data, headers=headers, verify=False)
+
+    print(browser.response.text)
+    print(browser.response.from_cache)
+
+    if browser.response.status_code == 200:
+        print(browser.response)
+    return browser.session
+
 
 
 def get_measurements_url(chemical_id=4, from_date=datetime.today(), to_date=datetime.today(),
@@ -35,6 +76,7 @@ def get_measurements_url(chemical_id=4, from_date=datetime.today(), to_date=date
 def get_csv_url(content, url_template=access.csv_url):
     soup = BeautifulSoup(content, 'xml')
     page_id = soup.find('aui:screen-serial')['value']
+    print('CSV URL: {}'.format(url_template))
     return url_template.format(page_id=page_id)
 
 
@@ -43,60 +85,6 @@ def get_measurements_csv_file(session, measurements_url=get_measurements_url()):
         measurments_page = get_page(measurements_url, session)
         print('{} from cache: {}'.format(measurements_url, measurments_page.from_cache))
         return get_page(get_csv_url(measurments_page.text), session)
-
-
-
-def save_file(file_name, content):
-    with open(file_name, mode='w', encoding='utf8') as code:
-        code.write(content.text)
-
-
-def get_stations_names_dict_from_csv(measurements_csv_file):
-    if not os.path.exists(measurements_csv_file):
-        return None
-    with open(measurements_csv_file, 'r', encoding='utf-8') as f:
-        reader_fields = csv.reader(f)
-        for num, row in enumerate(reader_fields):
-            if num == 0:
-                fields_ru_list = row[0].split('\t')[1:]
-                fields = [translit(mark, reversed=True) for mark in fields_ru_list]
-                clear_fields = [re.sub("[\'\-\(\).]", '', st).strip().replace(' ', '_') for st in fields]
-            else:
-                break
-        return OrderedDict(zip(clear_fields, fields_ru_list))
-
-
-def get_stenches_dict_from_file(measurements_csv_file, stations_names_list):
-    stations_names_list.insert(0, 'date')
-    askza_alarm_values_dict = OrderedDict()
-    stenches_numb = 0
-    pdk = 0.0
-    if not os.path.exists(measurements_csv_file):
-        return None
-    with open(measurements_csv_file, 'r', encoding='utf-8') as f:
-        reader = csv.DictReader(f, stations_names_list, delimiter='	')
-        for num, row in enumerate(reader):
-            if num == 1:
-                # row.items()[0]
-                pdk = float(row.popitem()[1])
-                print(pdk)
-            if num == 2: # to avoid empty values row
-                station_kontrol_empty_name = next(iter(row.keys()))
-            if num not in (0, 1) and row['date'] != '' and row[station_kontrol_empty_name] != '':
-                date = row['date']
-                stench_datetime = datetime.strptime(date, "%d/%m/%Y %H:%M")
-                del row['date']
-                stench = {key: round(float(value)/0.008, 2) for key, value in row.items() if value not in ('', None)
-                          and float(value) > pdk}
-                if stench:
-                    stenches_numb = stenches_numb + len(stench)
-                    try:
-                        askza_alarm_values_dict[stench_datetime].update(stench)
-                    except KeyError:
-                        askza_alarm_values_dict.setdefault(stench_datetime)
-                        askza_alarm_values_dict[stench_datetime] = stench
-
-        return stenches_numb, askza_alarm_values_dict
 
 
 def get_stenchs_str_list(stenchs_dict, stenches_numb, stations_names_dict,
@@ -119,20 +107,6 @@ def get_stenchs_str_list(stenchs_dict, stenches_numb, stations_names_dict,
 
 # def stenches_all
 
-
-def get_page(url, session=None, verify=False):
-    headers = {'User-agent': 'Mozilla/5.0', 'Accept-Language': 'ru-RU,ru;q=0.8,en-US;q=0.5,en;q=0.3',
-               'Accept-Encoding': 'gzip'}
-    try:
-        if session is not None:
-            return session.get(url, headers=headers, verify=verify)
-        else:
-            return requests.get(url, headers=headers, verify=verify)
-    except (ConnectionError, requests.exceptions.ConnectionError) as exc:
-        logging.error(exc)
-        return None
-
-
 def validate_date(str_date, str_hour, str_min):
     [datetime_, hour, minut] = [0, 0, 0]
     date_match = re.search('^\d{1,2}/\d{1,2}/\d{4}', str_date)
@@ -149,7 +123,7 @@ def validate_date(str_date, str_hour, str_min):
             return None
         return datetime_
 
-#=datetime.today().strftime('%d/%m/%Y')
+
 def get_validate_date_from(str_date=0, str_hour=0, str_min=0):
     if not str_date:
         str_date = datetime.today().strftime('%d/%m/%Y')
@@ -162,6 +136,13 @@ def get_validate_date_to(str_date=0, str_hour=23, str_min=59):
     return validate_date(str_date, str_hour, str_min)
 
 
+def get_stenches_from_url(date_from_str, date_to_str, chemical_str,  chemicals_dict, stenches_dict):
+    date_from = get_validate_date_from(date_from_str)
+    date_to = get_validate_date_to(date_to_str)
+    chemical_id = stations.get_chemical_id_from_db(chemical)
+    if chemical_id:
+        print(chemical_id.mem_id)
+
 
 if __name__ == '__main__':
 
@@ -172,22 +153,24 @@ if __name__ == '__main__':
 
     # s = requests_cache.CachedSession()
 
-    session = get_egfdm_authorization_session(access.url, access.data)
-
-
+    # session = get_egfdm_authorization_rb_session(access.url, access.data, requests_cache)
+    session = get_egfdm_authorization_session(access.url, access.data, requests_cache)
 
 
     stations_page = stations.get_stations_page(session, access.stations_url)
-
-    stations_dict = stations.get_stations_dict_from_html(stations_page)
-    print(stations_dict)
-    # stations.stations_greate(stations_dict)
+    #
+    # stations_dict = stations.get_stations_dict_from_html(stations_page)
+    # print(stations_dict)
+    # # stations.stations_greate(stations_dict)
     chemicals_dict = stations.get_chemicals_dict_from_html(stations_page)
-    # stations.db_chemicals_greate(chemicals_dict)
-    print(chemicals_dict)
 
 
 
+    # # stations.db_chemicals_greate(chemicals_dict)
+    # print(chemicals_dict)
+    #
+    #
+    #
     date_from = get_validate_date_from('29/12/2017')
     date_to = get_validate_date_to('29/12/2017')
     chemical = 'h2s'
@@ -198,18 +181,20 @@ if __name__ == '__main__':
     print(date_from, date_to, chemical in chemicals_dict)
 
 
-    # #
-    # if date_from and date_to and chemical in chemicals_dict:
-    #     measurements_url = get_measurements_url(chemicals_dict[chemical], date_from, date_to)
-    #     print(measurements_url)
-    #     save_file('egfdm1.csv', get_measurements_csv_file(session, measurements_url))
-    #     stations_names = get_stations_names_dict_from_csv('egfdm1.csv')
-    #     # print(stations_names)
-    #     # print(list(stations_names.keys()))
-    #     stenches_numb, stenchs = get_stenches_dict_from_file('egfdm1.csv', list(stations_names.keys()))
-    #     print(('\n').join(get_stenchs_str_list(stenchs, stenches_numb, stations_names, date_from, date_to)))
-    # else:
-    #     logging.error("Неправильные значения дат")
+    #
+    if date_from and date_to and chemical in chemicals_dict:
+        measurements_url = get_measurements_url(chemicals_dict[chemical], date_from, date_to)
+        print(measurements_url)
+        content = get_measurements_csv_file(session, measurements_url)
+        save_file('egfdm1.csv', content)
+
+        stations_names = stations.get_stations_names_dict_from_csv('egfdm1.csv')
+        print(stations_names)
+        # print(list(stations_names.keys()))
+        stenches_numb, stenchs = get_stenches_dict_from_file('egfdm1.csv', list(stations_names.keys()))
+        print(('\n').join(get_stenchs_str_list(stenchs, stenches_numb, stations_names, date_from, date_to)))
+    else:
+        logging.error("Неправильные значения дат")
 
 
     # (chemical_id = 4, from_date = datetime.today(), from_hour = '0', from_min = '0',
